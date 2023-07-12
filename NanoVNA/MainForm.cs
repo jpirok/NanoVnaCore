@@ -171,13 +171,21 @@ namespace NanoVNA
             }
         }
 
-        public void CloseComEvent(object sender, SerialPortEventArgs e)
+        public void CloseComPort_Event(object sender, SerialPortEventArgs e)
         {
             if (base.InvokeRequired)
             {
-                Invoke(new Action<object, SerialPortEventArgs>(CloseComEvent), sender, e);
+                try
+                {
+                    Invoke(new Action<object, SerialPortEventArgs>(CloseComPort_Event), sender, e);
+                }
+                catch (Exception)
+                {
+                }
+                return;
             }
-            else if (!e.isOpend)
+
+            if (!e.isOpend)
             {
                 if (Thread.CurrentThread.CurrentUICulture.Name == "zh-CN")
                 {
@@ -248,8 +256,10 @@ namespace NanoVNA
         }
         public void RunPython(string data)
         {
-            var psi = new ProcessStartInfo();
-            psi.FileName = @"C:\Users\Ohan\AppData\Local\Programs\Python\Python36\python.exe";
+            var psi = new ProcessStartInfo
+            {
+                FileName = @"C:\Users\Ohan\AppData\Local\Programs\Python\Python36\python.exe"
+            };
             var script = @"C:\git\NavoVNASharp\tdr.py";
             psi.Arguments = $"\"{script}\" \"{data}\"";
             psi.UseShellExecute = false;
@@ -403,71 +413,74 @@ namespace NanoVNA
 
         private void GetFreqs(string data)
         {
-            double num = 50000.0;
             int num2 = data.IndexOf("frequencies\r\n") + "frequencies\r\n".Length;
             int num3 = data.IndexOf("ch>", num2);
-            if (num3 - num2 > 500)
+
+            if (num3 - num2 <= 500)
             {
-                data = data.Substring(num2, num3 - num2);
-                string[] array = data.Split(' ', '\n');
-                if (array.Length == 102)
+                return;
+            }
+
+            data = data.Substring(num2, num3 - num2);
+            string[] array = data.Split(' ', '\n');
+
+            if (array.Length != 102)
+            {
+                return;
+            }
+
+            try
+            {
+                for (int i = 0; i < 101; i++)
                 {
-                    try
+                    if (!double.TryParse(array[i], out double num))
                     {
-                        for (int i = 0; i < 101; i++)
-                        {
-                            try
-                            {
-                                num = Convert.ToDouble(array[i], CultureInfo.InvariantCulture);
-                            }
-                            catch (Exception)
-                            {
-                            }
-                            if (i > 0 && num >= 50000.0)
-                            {
-                                freqs[i] = num;
-                            }
-                            else
-                            {
-                                if (i != 0)
-                                {
-                                    return;
-                                }
-                                if (num > 50000.0)
-                                {
-                                    freqs[i] = num;
-                                }
-                                else
-                                {
-                                    freqs[i] = 50000.0;
-                                }
-                            }
-                        }
-                        decimal num4 = (decimal)freqs[0] / 1000000m;
-                        decimal num5 = (decimal)freqs[100] / 1000000m;
-                        decimal num6 = ((decimal)freqs[0] + (decimal)freqs[100]) / 2m / 1000000m;
-                        decimal num7 = ((decimal)freqs[100] - (decimal)freqs[0]) / 1000000m;
-                        if (Math.Abs(CenterNumericUpDown.Value - num6) > decimal.Zero && !CenterNumericUpDown.Focused)
-                        {
-                            CenterNumericUpDown.Value = num6;
-                        }
-                        if (Math.Abs(SpanNumericUpDown.Value - num7) > decimal.Zero && !SpanNumericUpDown.Focused)
-                        {
-                            SpanNumericUpDown.Value = num7;
-                        }
-                        if (Math.Abs(StartNumericUpDown.Value - num4) > decimal.Zero && !StartNumericUpDown.Focused)
-                        {
-                            StartNumericUpDown.Value = num4;
-                        }
-                        if (Math.Abs(StopNumericUpDown.Value - num5) > decimal.Zero && !StopNumericUpDown.Focused)
-                        {
-                            StopNumericUpDown.Value = num5;
-                        }
+                        num = 50000d;
                     }
-                    catch (Exception)
+
+                    if (i > 0 && num >= 50000.0)
                     {
+                        freqs[i] = num;
+                    }
+                    else
+                    {
+                        if (i != 0)
+                        {
+                            return;
+                        }
+                        if (num > 50000.0)
+                        {
+                            freqs[i] = num;
+                        }
+                        else
+                        {
+                            freqs[i] = 50000.0;
+                        }
                     }
                 }
+                decimal num4 = (decimal)freqs[0] / 1000000m;
+                decimal num5 = (decimal)freqs[100] / 1000000m;
+                decimal num6 = ((decimal)freqs[0] + (decimal)freqs[100]) / 2m / 1000000m;
+                decimal num7 = ((decimal)freqs[100] - (decimal)freqs[0]) / 1000000m;
+                if (Math.Abs(CenterNumericUpDown.Value - num6) > decimal.Zero && !CenterNumericUpDown.Focused)
+                {
+                    CenterNumericUpDown.Value = num6;
+                }
+                if (Math.Abs(SpanNumericUpDown.Value - num7) > decimal.Zero && !SpanNumericUpDown.Focused)
+                {
+                    SpanNumericUpDown.Value = num7;
+                }
+                if (Math.Abs(StartNumericUpDown.Value - num4) > decimal.Zero && !StartNumericUpDown.Focused)
+                {
+                    StartNumericUpDown.Value = num4;
+                }
+                if (Math.Abs(StopNumericUpDown.Value - num5) > decimal.Zero && !StopNumericUpDown.Focused)
+                {
+                    StopNumericUpDown.Value = num5;
+                }
+            }
+            catch (Exception)
+            {
             }
         }
 
@@ -507,12 +520,15 @@ namespace NanoVNA
             YMaxNumericUpDown.Minimum = decimal.MinValue;
             YMinNumericUpDown.Maximum = decimal.MaxValue;
             YMinNumericUpDown.Minimum = decimal.MinValue;
-            string text = formatComboBox.Text;
-            if (text == null)
+
+            if (string.IsNullOrEmpty(formatComboBox.Text))
             {
-                goto IL_0fda;
+                IL_0fda();
+                UpdatePlot();
+                return;
             }
-            switch (text)
+
+            switch (formatComboBox.Text)
             {
                 case "Linear S11":
                 case "Linear S21":
@@ -521,95 +537,81 @@ namespace NanoVNA
                 case "Phase S11":
                 case "Phase S21":
                 case "Phase S11&S21":
-                    goto IL_047b;
+                    IL_047b();
+                    break;
                 case "SWR S11":
-                    goto IL_06ab;
+                    IL_06ab();
+                    break;
                 case "Smith S11":
                 case "Admittance S11":
-                    goto IL_08cc;
+                    IL_08cc();
+                    break;
                 case "Polar S11":
-                    goto IL_0b5f;
+                    IL_0b5f();
+                    break;
                 case "GroupDelay S11":
                 case "GroupDelay S21":
                 case "GroupDelay S11&S21":
-                    goto IL_0d7d;
+                    IL_0d7d();
+                    break;
                 default:
-                    goto IL_0fda;
+                    IL_0fda();
+                    break;
             }
+
+            UpdatePlot();
+        }
+
+        private void IL_047b()
+        {
             YMaxCheckBox.Enabled = true;
             YMinCheckBox.Enabled = true;
             YMaxCheckBox.Checked = false;
             YMinCheckBox.Checked = false;
-            chart1.ChartAreas[0].AxisY.Title = "Magnitude |S|";
+            chart1.ChartAreas[0].AxisY.Title = "Phase:deg";
             chart1.Series[0].ChartType = SeriesChartType.Line;
             chart1.Series[1].ChartType = SeriesChartType.Line;
-            chart1.ChartAreas[0].AxisY.Minimum = 0.0;
-            chart1.ChartAreas[0].AxisY.Maximum = 1.0;
+            chart1.ChartAreas[0].AxisY.Minimum = -180.0;
+            chart1.ChartAreas[0].AxisY.Maximum = 180.0;
             YMaxNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Maximum;
             YMinNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Minimum;
-            YMaxNumericUpDown.Maximum = 1000m;
-            YMaxNumericUpDown.Minimum = decimal.One;
-            YMinNumericUpDown.Maximum = 500m;
-            YMinNumericUpDown.Minimum = decimal.Zero;
-            chart1.ChartAreas[0].AxisX.LabelStyle.Enabled = true;
-            chart1.ChartAreas[0].AxisX.MajorGrid.Enabled = true;
-            chart1.ChartAreas[0].AxisY.LineWidth = 1;
-            chart1.ChartAreas[0].AxisY.LabelStyle.Enabled = true;
-            chart1.ChartAreas[0].AxisY.MajorGrid.Enabled = true;
-            chart1.ChartAreas[0].BackImage = "";
-            goto IL_11fc;
-            IL_11fc:
-            UpdatePlot();
-            return;
-            IL_0d7d:
-            YMaxCheckBox.Enabled = true;
-            YMinCheckBox.Enabled = true;
-            YMaxCheckBox.Checked = true;
-            YMinCheckBox.Checked = false;
-            YMaxNumericUpDown.Enabled = false;
-            chart1.ChartAreas[0].AxisY.Title = "GroupDelay:ns";
-            chart1.Series[0].ChartType = SeriesChartType.Line;
-            chart1.Series[1].ChartType = SeriesChartType.Line;
-            chart1.ChartAreas[0].AxisY.Minimum = 0.0;
-            chart1.ChartAreas[0].AxisY.Maximum = 100.0;
-            YMaxNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Maximum;
-            YMinNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Minimum;
-            chart1.ChartAreas[0].AxisY.Maximum = double.NaN;
-            YMaxNumericUpDown.Maximum = 100000m;
-            YMaxNumericUpDown.Minimum = -100m;
-            YMinNumericUpDown.Maximum = 90000m;
+            YMaxNumericUpDown.Maximum = 180m;
+            YMaxNumericUpDown.Minimum = -179m;
+            YMinNumericUpDown.Maximum = 179m;
             YMinNumericUpDown.Minimum = -180m;
             chart1.ChartAreas[0].AxisX.LabelStyle.Enabled = true;
             chart1.ChartAreas[0].AxisX.MajorGrid.Enabled = true;
             chart1.ChartAreas[0].AxisY.LineWidth = 1;
             chart1.ChartAreas[0].AxisY.LabelStyle.Enabled = true;
             chart1.ChartAreas[0].AxisY.MajorGrid.Enabled = true;
-            chart1.ChartAreas[0].BackImage = "";
-            goto IL_11fc;
-            IL_0b5f:
-            chart1.ChartAreas[0].AxisY.Title = "Polar";
-            chart1.Series[0].ChartType = SeriesChartType.Polar;
-            chart1.Series[1].ChartType = SeriesChartType.Polar;
-            chart1.ChartAreas[0].AxisY.Minimum = 0.0;
-            chart1.ChartAreas[0].AxisY.Maximum = 1.0;
+            chart1.ChartAreas[0].BackImage = string.Empty;
+        }
+        private void IL_06ab()
+        {
+            YMaxCheckBox.Enabled = true;
+            YMinCheckBox.Enabled = true;
+            YMaxCheckBox.Checked = false;
+            YMinCheckBox.Checked = false;
+            chart1.ChartAreas[0].AxisY.Title = "SWR";
+            chart1.Series[0].ChartType = SeriesChartType.Line;
+            chart1.Series[1].ChartType = SeriesChartType.Line;
+            chart1.ChartAreas[0].AxisY.Minimum = 1.0;
+            chart1.ChartAreas[0].AxisY.Maximum = 20.0;
             YMaxNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Maximum;
             YMinNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Minimum;
-            YMaxNumericUpDown.Maximum = decimal.One;
-            YMaxNumericUpDown.Minimum = decimal.One;
-            YMinNumericUpDown.Maximum = decimal.Zero;
-            YMinNumericUpDown.Minimum = decimal.Zero;
-            chart1.ChartAreas[0].AxisX.LabelStyle.Enabled = false;
+            YMaxNumericUpDown.Maximum = 100m;
+            YMaxNumericUpDown.Minimum = 2m;
+            YMinNumericUpDown.Maximum = 20m;
+            YMinNumericUpDown.Minimum = decimal.One;
+            chart1.ChartAreas[0].AxisX.LabelStyle.Enabled = true;
             chart1.ChartAreas[0].AxisX.MajorGrid.Enabled = true;
-            chart1.ChartAreas[0].AxisY.LineWidth = 0;
-            chart1.ChartAreas[0].AxisY.LabelStyle.Enabled = false;
+            chart1.ChartAreas[0].AxisY.LineWidth = 1;
+            chart1.ChartAreas[0].AxisY.LabelStyle.Enabled = true;
             chart1.ChartAreas[0].AxisY.MajorGrid.Enabled = true;
-            chart1.ChartAreas[0].BackImage = "";
-            YMaxCheckBox.Enabled = false;
-            YMinCheckBox.Enabled = false;
-            YMaxNumericUpDown.Enabled = false;
-            YMinNumericUpDown.Enabled = false;
-            goto IL_11fc;
-            IL_08cc:
+            chart1.ChartAreas[0].BackImage = string.Empty;
+        }
+        private void IL_08cc()
+        {
             chart1.Series[0].ChartType = SeriesChartType.Polar;
             chart1.Series[1].ChartType = SeriesChartType.Polar;
             chart1.ChartAreas[0].AxisY.Minimum = 0.0;
@@ -645,31 +647,59 @@ namespace NanoVNA
                     chart1.ChartAreas[0].BackImage = "Smith.png";
                 }
             }
-            goto IL_11fc;
-            IL_047b:
-            YMaxCheckBox.Enabled = true;
-            YMinCheckBox.Enabled = true;
-            YMaxCheckBox.Checked = false;
-            YMinCheckBox.Checked = false;
-            chart1.ChartAreas[0].AxisY.Title = "Phase:deg";
-            chart1.Series[0].ChartType = SeriesChartType.Line;
-            chart1.Series[1].ChartType = SeriesChartType.Line;
-            chart1.ChartAreas[0].AxisY.Minimum = -180.0;
-            chart1.ChartAreas[0].AxisY.Maximum = 180.0;
+        }
+        private void IL_0b5f()
+        {
+            chart1.ChartAreas[0].AxisY.Title = "Polar";
+            chart1.Series[0].ChartType = SeriesChartType.Polar;
+            chart1.Series[1].ChartType = SeriesChartType.Polar;
+            chart1.ChartAreas[0].AxisY.Minimum = 0.0;
+            chart1.ChartAreas[0].AxisY.Maximum = 1.0;
             YMaxNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Maximum;
             YMinNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Minimum;
-            YMaxNumericUpDown.Maximum = 180m;
-            YMaxNumericUpDown.Minimum = -179m;
-            YMinNumericUpDown.Maximum = 179m;
+            YMaxNumericUpDown.Maximum = decimal.One;
+            YMaxNumericUpDown.Minimum = decimal.One;
+            YMinNumericUpDown.Maximum = decimal.Zero;
+            YMinNumericUpDown.Minimum = decimal.Zero;
+            chart1.ChartAreas[0].AxisX.LabelStyle.Enabled = false;
+            chart1.ChartAreas[0].AxisX.MajorGrid.Enabled = true;
+            chart1.ChartAreas[0].AxisY.LineWidth = 0;
+            chart1.ChartAreas[0].AxisY.LabelStyle.Enabled = false;
+            chart1.ChartAreas[0].AxisY.MajorGrid.Enabled = true;
+            chart1.ChartAreas[0].BackImage = string.Empty;
+            YMaxCheckBox.Enabled = false;
+            YMinCheckBox.Enabled = false;
+            YMaxNumericUpDown.Enabled = false;
+            YMinNumericUpDown.Enabled = false;
+        }
+        private void IL_0d7d()
+        {
+            YMaxCheckBox.Enabled = true;
+            YMinCheckBox.Enabled = true;
+            YMaxCheckBox.Checked = true;
+            YMinCheckBox.Checked = false;
+            YMaxNumericUpDown.Enabled = false;
+            chart1.ChartAreas[0].AxisY.Title = "GroupDelay:ns";
+            chart1.Series[0].ChartType = SeriesChartType.Line;
+            chart1.Series[1].ChartType = SeriesChartType.Line;
+            chart1.ChartAreas[0].AxisY.Minimum = 0.0;
+            chart1.ChartAreas[0].AxisY.Maximum = 100.0;
+            YMaxNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Maximum;
+            YMinNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Minimum;
+            chart1.ChartAreas[0].AxisY.Maximum = double.NaN;
+            YMaxNumericUpDown.Maximum = 100000m;
+            YMaxNumericUpDown.Minimum = -100m;
+            YMinNumericUpDown.Maximum = 90000m;
             YMinNumericUpDown.Minimum = -180m;
             chart1.ChartAreas[0].AxisX.LabelStyle.Enabled = true;
             chart1.ChartAreas[0].AxisX.MajorGrid.Enabled = true;
             chart1.ChartAreas[0].AxisY.LineWidth = 1;
             chart1.ChartAreas[0].AxisY.LabelStyle.Enabled = true;
             chart1.ChartAreas[0].AxisY.MajorGrid.Enabled = true;
-            chart1.ChartAreas[0].BackImage = "";
-            goto IL_11fc;
-            IL_0fda:
+            chart1.ChartAreas[0].BackImage = string.Empty;
+        }
+        private void IL_0fda()
+        {
             YMaxCheckBox.Enabled = true;
             YMinCheckBox.Enabled = true;
             YMaxCheckBox.Checked = false;
@@ -690,31 +720,7 @@ namespace NanoVNA
             chart1.ChartAreas[0].AxisY.LineWidth = 1;
             chart1.ChartAreas[0].AxisY.LabelStyle.Enabled = true;
             chart1.ChartAreas[0].AxisY.MajorGrid.Enabled = true;
-            chart1.ChartAreas[0].BackImage = "";
-            goto IL_11fc;
-            IL_06ab:
-            YMaxCheckBox.Enabled = true;
-            YMinCheckBox.Enabled = true;
-            YMaxCheckBox.Checked = false;
-            YMinCheckBox.Checked = false;
-            chart1.ChartAreas[0].AxisY.Title = "SWR";
-            chart1.Series[0].ChartType = SeriesChartType.Line;
-            chart1.Series[1].ChartType = SeriesChartType.Line;
-            chart1.ChartAreas[0].AxisY.Minimum = 1.0;
-            chart1.ChartAreas[0].AxisY.Maximum = 20.0;
-            YMaxNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Maximum;
-            YMinNumericUpDown.Value = (decimal)chart1.ChartAreas[0].AxisY.Minimum;
-            YMaxNumericUpDown.Maximum = 100m;
-            YMaxNumericUpDown.Minimum = 2m;
-            YMinNumericUpDown.Maximum = 20m;
-            YMinNumericUpDown.Minimum = decimal.One;
-            chart1.ChartAreas[0].AxisX.LabelStyle.Enabled = true;
-            chart1.ChartAreas[0].AxisX.MajorGrid.Enabled = true;
-            chart1.ChartAreas[0].AxisY.LineWidth = 1;
-            chart1.ChartAreas[0].AxisY.LabelStyle.Enabled = true;
-            chart1.ChartAreas[0].AxisY.MajorGrid.Enabled = true;
-            chart1.ChartAreas[0].BackImage = "";
-            goto IL_11fc;
+            chart1.ChartAreas[0].BackImage = string.Empty;
         }
 
         private void getDataButton_Click(object sender, EventArgs e)
@@ -1011,13 +1017,13 @@ namespace NanoVNA
                             }
                             num = 1.0;
                             goto IL_026c;
-                            IL_022d:
+                        IL_022d:
                             num = 1000.0;
                             goto IL_026c;
-                            IL_0261:
+                        IL_0261:
                             num = 1000000000.0;
                             goto IL_026c;
-                            IL_026c:
+                        IL_026c:
                             if (value[1] == "S" && value[2] == "RI" && value[3] == "R" && value[4] == "50")
                             {
                                 a = "RI";
@@ -1036,13 +1042,13 @@ namespace NanoVNA
                                 a = "DB";
                             }
                             continue;
-                            IL_0254:
+                        IL_0254:
                             num = 1000000000000.0;
                             goto IL_026c;
-                            IL_0247:
+                        IL_0247:
                             num = 1000000000.0;
                             goto IL_026c;
-                            IL_023a:
+                        IL_023a:
                             num = 1000000.0;
                             goto IL_026c;
                         }

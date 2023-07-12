@@ -6,11 +6,10 @@ import sys
  
 raw_points = 101
 NFFT = 16384
-PROPAGATION_SPEED = 65.9 #For RG405
+_prop_speed = 0.659 #For RG405
 plt_data = sys.argv[1]
 print(plt_data)
  #Read skrf docs
-_prop_speed = PROPAGATION_SPEED/100
 cable = rf.Network(plt_data)
 
 print(cable)

@@ -12,7 +12,7 @@ namespace NanoVNA
 		{
 			this.view = view;
 			view.SetController(this);
-			comModel.comCloseEvent += view.CloseComEvent;
+			comModel.comCloseEvent += view.CloseComPort_Event;
 			comModel.comOpenEvent += view.OpenComEvent;
 			comModel.comReceiveDataEvent += view.ComReceiveDataEvent;
 		}

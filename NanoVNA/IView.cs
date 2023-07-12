@@ -6,7 +6,7 @@ namespace NanoVNA
 
 		void OpenComEvent(object sender, SerialPortEventArgs e);
 
-		void CloseComEvent(object sender, SerialPortEventArgs e);
+		void CloseComPort_Event(object sender, SerialPortEventArgs e);
 
 		void ComReceiveDataEvent(object sender, SerialPortEventArgs e);
 	}
